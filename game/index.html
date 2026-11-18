@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sunset Streets: Marisol Bay</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23ff7a1a'/%3E%3Ccircle cx='16' cy='18' r='9' fill='%23ffd23e'/%3E%3Crect y='22' width='32' height='10' fill='%230b3d66'/%3E%3C/svg%3E">
+<style>
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#1a0f2e;font-family:'Segoe UI',Arial,sans-serif;}
+  #game-canvas{display:block;width:100%;height:100%;}
+  .hidden{display:none !important;}
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:20;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);}
+  #wanted{position:absolute;top:14px;right:18px;font-size:30px;letter-spacing:4px;color:#ffd23e;}
+  #wanted .off{color:rgba(255,255,255,.22);}
+  #cash{position:absolute;top:52px;right:18px;font-size:22px;font-weight:700;color:#7dff9a;}
+  #clock{position:absolute;top:86px;right:18px;font-size:15px;color:#ffe9c9;}
+  #radio{position:absolute;top:112px;right:18px;font-size:13px;color:#ffd23e;background:rgba(0,0,0,.35);padding:3px 8px;border-radius:10px;}
+  #health-wrap{position:absolute;bottom:18px;right:18px;width:230px;}
+  #health-label{font-size:12px;letter-spacing:2px;color:#fff;margin-bottom:3px;}
+  #health-bar{height:14px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.5);border-radius:7px;overflow:hidden;}
+  #health-fill{height:100%;width:100%;background:linear-gradient(90deg,#37d67a,#a5e635);}
+  #armor-bar{height:6px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.4);border-radius:3px;overflow:hidden;margin-top:3px;}
+  #armor-fill{height:100%;width:0%;background:#5bc8ff;}
+  #weapon-box{position:absolute;bottom:86px;right:18px;text-align:right;font-size:16px;}
+  #weapon-name{font-weight:700;}
+  #ammo{font-size:20px;color:#ffd23e;}
+  #speedo{position:absolute;bottom:150px;right:18px;font-size:26px;font-weight:700;color:#fff;}
+  #speedo small{font-size:13px;color:#ffd23e;}
+  #objective{position:absolute;top:14px;left:18px;max-width:420px;background:rgba(10,10,30,.55);border-left:4px solid #ff7a1a;padding:10px 12px;border-radius:4px;}
+  #objective-title{font-size:13px;letter-spacing:2px;color:#ffb347;font-weight:700;}
+  #objective-text{font-size:17px;line-height:1.35;margin-top:2px;}
+  #objective-sub{font-size:13px;color:#cfe6ff;margin-top:3px;}
+  #mission-banner{position:absolute;top:22%;left:50%;transform:translateX(-50%);text-align:center;display:none;}
+  #mission-banner h1{font-size:44px;margin:0;color:#ffd23e;letter-spacing:3px;text-shadow:0 3px 12px rgba(0,0,0,.9);}
+  #mission-banner p{font-size:19px;margin:6px 0 0;color:#fff;}
+  #toast{position:absolute;bottom:210px;left:50%;transform:translateX(-50%);font-size:18px;background:rgba(0,0,0,.6);padding:8px 16px;border-radius:6px;display:none;white-space:nowrap;}
+  #hint{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);font-size:13px;color:#e8e8e8;background:rgba(0,0,0,.45);padding:5px 12px;border-radius:12px;}
+  #minimap{position:absolute;left:16px;bottom:16px;width:190px;height:190px;border:2px solid rgba(255,255,255,.65);border-radius:50%;background:#0c1a2e;z-index:60;box-shadow:0 0 0 4px rgba(0,0,0,.35);}
+  #damage-flash{position:fixed;inset:0;pointer-events:none;z-index:30;background:radial-gradient(ellipse at center,transparent 55%,rgba(255,0,0,.55) 100%);opacity:0;transition:opacity .12s;}
+  #crosshair{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:22px;color:#fff;display:none;}
+  /* ---------- Screens ---------- */
+  .screen{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;background:linear-gradient(180deg,rgba(20,8,40,.25) 0%,rgba(255,110,20,.28) 55%,rgba(10,10,40,.72) 100%);}
+  .screen h1{font-size:64px;margin:0;letter-spacing:4px;color:#ffd23e;text-shadow:0 4px 24px rgba(0,0,0,.9);}
+  .screen h2{font-size:22px;margin:8px 0 0;color:#ffe9c9;font-weight:400;letter-spacing:2px;}
+  .screen p{max-width:640px;font-size:16px;line-height:1.5;color:#f2f2f2;}
+  .btn{pointer-events:auto;cursor:pointer;background:#ff7a1a;color:#fff;border:2px solid #ffd23e;font-size:20px;font-weight:700;padding:13px 42px;border-radius:8px;margin-top:18px;letter-spacing:1px;}
+  .btn:hover{background:#ff8f3d;}
+  .btn.secondary{background:rgba(0,0,0,.5);font-size:16px;padding:9px 26px;}
+  .controls-grid{display:grid;grid-template-columns:auto auto;gap:4px 18px;text-align:left;font-size:14px;background:rgba(0,0,0,.45);padding:14px 20px;border-radius:8px;margin-top:14px;}
+  .controls-grid b{color:#ffd23e;}
+  #pause-screen,#shop-screen,#dead-screen,#win-screen{background:rgba(8,8,28,.82);}
+  .shop-list{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;justify-content:center;}
+  .shop-card{pointer-events:auto;cursor:pointer;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.35);border-radius:10px;padding:14px;width:170px;}
+  .shop-card:hover{border-color:#ffd23e;}
+  .shop-card h3{margin:0 0 6px;font-size:17px;color:#ffd23e;}
+  .shop-card p{font-size:13px;margin:0 0 8px;color:#ddd;}
+  .shop-card .price{font-size:18px;font-weight:700;color:#7dff9a;}
+  #shop-close{margin-top:16px;}
+  #save-note{font-size:13px;color:#9fd8ff;margin-top:10px;}
+</style>
+</head>
+<body>
+<canvas id="game-canvas"></canvas>
+
+<div id="hud" class="hidden">
+  <canvas id="minimap" width="190" height="190"></canvas>
+  <div id="objective"><div id="objective-title">MARISOL BAY</div><div id="objective-text">Welcome to Marisol Bay.</div><div id="objective-sub"></div></div>
+  <div id="wanted"><span class="off">★★★★★</span></div>
+  <div id="cash">$0</div>
+  <div id="clock">18:42 &middot; SUNSET</div>
+  <div id="radio">&#9834; WAVE 88.5</div>
+  <div id="weapon-box"><div id="weapon-name">PISTOL</div><div id="ammo">&infin;</div></div>
+  <div id="speedo" class="hidden">0 <small>MPH</small></div>
+  <div id="health-wrap">
+    <div id="health-label">HEALTH</div>
+    <div id="health-bar"><div id="health-fill"></div></div>
+    <div id="armor-bar"><div id="armor-fill"></div></div>
+  </div>
+  <div id="mission-banner"><h1 id="banner-title"></h1><p id="banner-sub"></p></div>
+  <div id="toast"></div>
+  <div id="crosshair">+</div>
+  <div id="hint">WASD move &middot; SHIFT sprint &middot; E enter / exit car &middot; F interact &middot; 1-4 weapons &middot; R radio &middot; P pause &middot; M mute</div>
+</div>
+<div id="damage-flash"></div>
+
+<div id="start-screen" class="screen">
+  <h1>SUNSET STREETS</h1>
+  <h2>MARISOL BAY &mdash; AN OPEN-WORLD CRIME STORY</h2>
+  <p>Jax Marlowe came home to Marisol Bay with nothing but a busted scooter and a debt.
+  Nadia Reyes has work for him &mdash; nine jobs, one city, and every cop in the bay on his tail.
+  Steal cars, outrun the law, and take the crown of the sunset coast.</p>
+  <button class="btn" id="btn-start">START GAME</button>
+  <button class="btn secondary" id="btn-continue">CONTINUE &mdash; SAVED GAME</button>
+  <div class="controls-grid">
+    <span><b>W A S D</b></span><span>Move / drive</span>
+    <span><b>MOUSE</b></span><span>Look &amp; aim (click to shoot)</span>
+    <span><b>E</b></span><span>Steal / enter car &middot; exit car</span>
+    <span><b>F</b></span><span>Interact &middot; pick up &middot; enter shop</span>
+    <span><b>1 &ndash; 4</b></span><span>Switch weapon</span>
+    <span><b>R</b></span><span>Change radio station</span>
+    <span><b>P / ESC</b></span><span>Pause</span>
+  </div>
+  <p id="save-note"></p>
+</div>
+
+<div id="pause-screen" class="screen hidden">
+  <h1>PAUSED</h1>
+  <p>Marisol Bay waits for no one. Well &mdash; right now it does.</p>
+  <button class="btn" id="btn-resume">RESUME</button>
+  <button class="btn secondary" id="btn-save-quit">SAVE &amp; QUIT TO MENU</button>
+</div>
+
+<div id="shop-screen" class="screen hidden">
+  <h1 id="shop-title">AMMU-NATION MARISOL</h1>
+  <h2 id="shop-sub">Weapons, armor and garage upgrades &mdash; cash only, no questions.</h2>
+  <div class="shop-list" id="shop-list"></div>
+  <button class="btn secondary" id="shop-close">LEAVE SHOP (F)</button>
+</div>
+
+<div id="dead-screen" class="screen hidden">
+  <h1>WASTED</h1>
+  <p>Jax got caught out on the streets of Marisol Bay. The city keeps its crown &mdash; for now.</p>
+  <button class="btn" id="btn-retry">TRY AGAIN</button>
+</div>
+
+<div id="win-screen" class="screen hidden">
+  <h1>KING OF MARISOL</h1>
+  <p>You did it. Nine jobs, the whole bay, and the crown is yours. Sunset never looked this good.</p>
+  <button class="btn" id="btn-free-roam">KEEP PLAYING &mdash; FREE ROAM</button>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="src/utils.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/city.js"></script>
+<script src="src/vehicles.js"></script>
+<script src="src/pedestrians.js"></script>
+<script src="src/police.js"></script>
+<script src="src/combat.js"></script>
+<script src="src/missions.js"></script>
+<script src="src/shops.js"></script>
+<script src="src/save.js"></script>
+<script src="src/hud.js"></script>
+<script src="src/player.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>
